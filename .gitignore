@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SSH keys for GitHub authentication (local only)
+.github_ssh_key
+.github_ssh_key.pub
+.ssh/
