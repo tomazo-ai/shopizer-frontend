@@ -1,0 +1,3 @@
+module.exports=[2760,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(77061);a.n(d("[project]/.openclaw/workspace/shopizer-frontend/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},3222,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(77061);a.n(d("[project]/.openclaw/workspace/shopizer-frontend/node_modules/next/dist/client/components/builtin/global-error.js"))},91219,a=>{"use strict";a.i(2760);var b=a.i(3222);a.n(b)}];
+
+//# sourceMappingURL=d6743_next_dist_client_components_builtin_global-error_7860613f.js.map
