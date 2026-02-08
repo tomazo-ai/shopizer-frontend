@@ -5,13 +5,12 @@ import { createCart, getCart, addToCart, updateCartItem, removeCartItem } from '
 
 interface CartState {
   cart: Cart | null;
-  cartId: number | null;
+  cartCode: string | null;
   isLoading: boolean;
   error: string | null;
   itemCount: number;
   
   // Actions
-  initCart: () => Promise<void>;
   fetchCart: () => Promise<void>;
   addItem: (productSku: string, quantity: number, attributes?: Array<{ code: string; value: string }>) => Promise<void>;
   updateItem: (itemId: number, quantity: number) => Promise<void>;
@@ -25,41 +24,18 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       cart: null,
-      cartId: null,
+      cartCode: null,
       isLoading: false,
       error: null,
       itemCount: 0,
 
-      initCart: async () => {
-        const { cartId } = get();
-        if (cartId) return;
-        
-        set({ isLoading: true, error: null });
-        try {
-          const newCart = await createCart();
-          set({
-            cart: newCart,
-            cartId: newCart.id,
-            itemCount: newCart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
-          });
-        } catch (error) {
-          set({ error: 'Failed to create cart' });
-          console.error('Cart initialization error:', error);
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
       fetchCart: async () => {
-        const { cartId } = get();
-        if (!cartId) {
-          await get().initCart();
-          return;
-        }
+        const { cartCode } = get();
+        if (!cartCode) return;
 
         set({ isLoading: true, error: null });
         try {
-          const cart = await getCart(cartId);
+          const cart = await getCart(cartCode);
           set({
             cart,
             itemCount: cart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
@@ -73,24 +49,44 @@ export const useCartStore = create<CartState>()(
       },
 
       addItem: async (productSku: string, quantity: number, attributes?: Array<{ code: string; value: string }>) => {
-        const { cartId } = get();
-        if (!cartId) {
-          await get().initCart();
-        }
-        
-        const currentCartId = get().cartId;
-        if (!currentCartId) return;
+        const { cartCode, cart } = get();
 
         set({ isLoading: true, error: null });
         try {
-          const cart = await addToCart(currentCartId, {
-            product: productSku,
-            quantity,
-            attributes,
-          });
+          let newCart: Cart;
+
+          if (!cartCode) {
+            // No cart exists - create new cart with POST /api/v1/cart
+            newCart = await createCart({
+              product: productSku,
+              quantity,
+              attributes,
+            });
+            // Extract and store the cart code from response
+            set({ cartCode: newCart.code });
+          } else {
+            // Cart exists - check if product already in cart
+            const existingItem = cart?.products?.find(
+              (item: CartItem) => item.sku === productSku
+            );
+
+            if (existingItem) {
+              // Product already exists - update quantity (current + adding)
+              const newQuantity = existingItem.quantity + quantity;
+              newCart = await updateCartItem(cartCode, existingItem.sku, newQuantity);
+            } else {
+              // Product doesn't exist - add to existing cart with PUT /api/v1/cart/{code}
+              newCart = await addToCart(cartCode, {
+                product: productSku,
+                quantity,
+                attributes,
+              });
+            }
+          }
+
           set({
-            cart,
-            itemCount: cart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
+            cart: newCart,
+            itemCount: newCart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
           });
         } catch (error) {
           set({ error: 'Failed to add item to cart' });
@@ -101,8 +97,12 @@ export const useCartStore = create<CartState>()(
       },
 
       updateItem: async (itemId: number, quantity: number) => {
-        const { cartId } = get();
-        if (!cartId) return;
+        const { cartCode, cart } = get();
+        if (!cartCode) return;
+
+        // Find the item in cart to get its SKU
+        const item = cart?.products?.find((p: CartItem) => p.id === itemId);
+        if (!item) return;
 
         if (quantity <= 0) {
           await get().removeItem(itemId);
@@ -111,10 +111,10 @@ export const useCartStore = create<CartState>()(
 
         set({ isLoading: true, error: null });
         try {
-          const cart = await updateCartItem(cartId, itemId, quantity);
+          const updatedCart = await updateCartItem(cartCode, item.sku, quantity);
           set({
-            cart,
-            itemCount: cart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
+            cart: updatedCart,
+            itemCount: updatedCart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
           });
         } catch (error) {
           set({ error: 'Failed to update item' });
@@ -125,12 +125,12 @@ export const useCartStore = create<CartState>()(
       },
 
       removeItem: async (itemId: number) => {
-        const { cartId } = get();
-        if (!cartId) return;
+        const { cartCode } = get();
+        if (!cartCode) return;
 
         set({ isLoading: true, error: null });
         try {
-          const cart = await removeCartItem(cartId, itemId);
+          const cart = await removeCartItem(cartCode, itemId);
           set({
             cart,
             itemCount: cart.products?.reduce((sum: number, item: CartItem) => sum + item.quantity, 0) || 0,
@@ -145,7 +145,7 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => {
         // Server-side cart persists but we clear local state
-        set({ cart: null, cartId: null, itemCount: 0, error: null });
+        set({ cart: null, cartCode: null, itemCount: 0, error: null });
       },
 
       getTotalItems: () => {
@@ -160,7 +160,7 @@ export const useCartStore = create<CartState>()(
     {
       name: 'shopizer-cart',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ cartId: state.cartId }), // Only persist cartId
+      partialize: (state) => ({ cartCode: state.cartCode }), // Only persist cartCode
     }
   )
 );

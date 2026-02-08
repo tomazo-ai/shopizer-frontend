@@ -131,42 +131,52 @@ export const searchAutocomplete = async (query: string): Promise<string[]> => {
 // Cart APIs
 // ====================
 
-export const createCart = async (): Promise<Cart> => {
-  const response = await apiClient.post('/api/v1/cart');
+// Create cart with first item - POST /api/v1/cart
+export const createCart = async (item: {
+  product: string;
+  quantity: number;
+  attributes?: Array<{ code: string; value: string }>;
+}): Promise<Cart> => {
+  const response = await apiClient.post('/api/v1/cart', item);
   return response.data;
 };
 
-export const getCart = async (cartId: number): Promise<Cart> => {
-  const response = await apiClient.get(`/api/v1/cart/${cartId}`);
+// Get cart by code - GET /api/v1/cart/{code}
+export const getCart = async (cartCode: string): Promise<Cart> => {
+  const response = await apiClient.get(`/api/v1/cart/${cartCode}`);
   return response.data;
 };
 
+// Add to existing cart - PUT /api/v1/cart/{code}
 export const addToCart = async (
-  cartId: number,
+  cartCode: string,
   item: {
     product: string;
     quantity: number;
     attributes?: Array<{ code: string; value: string }>;
   }
 ): Promise<Cart> => {
-  const response = await apiClient.post(`/api/v1/cart/${cartId}/item`, item);
+  const response = await apiClient.put(`/api/v1/cart/${cartCode}`, item);
   return response.data;
 };
 
+// Update cart item - PUT /api/v1/cart/{code}
+// Note: The API expects the PRODUCT SKU, not the cart item id
 export const updateCartItem = async (
-  cartId: number,
-  itemId: number,
+  cartCode: string,
+  productSku: string,
   quantity: number
 ): Promise<Cart> => {
-  const response = await apiClient.post(`/api/v1/cart/${cartId}/modify`, {
-    product: itemId,
+  const response = await apiClient.put(`/api/v1/cart/${cartCode}`, {
+    product: productSku,
     quantity,
   });
   return response.data;
 };
 
-export const removeCartItem = async (cartId: number, itemId: number): Promise<Cart> => {
-  const response = await apiClient.delete(`/api/v1/cart/${cartId}/product/${itemId}`);
+// Remove cart item - DELETE /api/v1/cart/{code}/product/{itemId}
+export const removeCartItem = async (cartCode: string, itemId: number): Promise<Cart> => {
+  const response = await apiClient.delete(`/api/v1/cart/${cartCode}/product/${itemId}`);
   return response.data;
 };
 
@@ -174,10 +184,10 @@ export const removeCartItem = async (cartId: number, itemId: number): Promise<Ca
 // Checkout APIs
 // ====================
 
-export const getShippingQuotes = async (cartId: number, address: Address): Promise<ShippingSummary> => {
+export const getShippingQuotes = async (cartCode: string, address: Address): Promise<ShippingSummary> => {
   const response = await apiClient.get('/api/v1/checkout/shippingQuotes', {
     params: {
-      cart: cartId,
+      cart: cartCode,
       ...address,
     },
   });
@@ -185,7 +195,7 @@ export const getShippingQuotes = async (cartId: number, address: Address): Promi
 };
 
 export const checkout = async (checkoutData: {
-  cart?: number;
+  cart?: string;
   customer?: Partial<Customer>;
   shipping?: Address;
   billing?: Address;

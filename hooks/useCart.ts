@@ -1,30 +1,22 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import useCartStore from '@/stores/cart';
 import { CartItem, Product } from '@/types/shopizer';
 
 export function useCart() {
   const {
     cart,
-    cartId,
+    cartCode,
     isLoading,
     error,
     itemCount,
-    initCart,
     fetchCart,
     addItem,
     updateItem,
     removeItem,
     clearCart,
   } = useCartStore();
-
-  // Initialize cart on mount
-  useEffect(() => {
-    if (!cartId) {
-      initCart();
-    }
-  }, [cartId, initCart]);
 
   const addToCart = useCallback(
     async (product: Product, quantity: number = 1, selectedOptions?: Record<string, string>) => {
@@ -80,7 +72,7 @@ export function useCart() {
 
   return {
     cart,
-    cartId,
+    cartCode,
     isLoading,
     error,
     itemCount,

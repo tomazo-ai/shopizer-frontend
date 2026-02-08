@@ -1,11 +1,24 @@
 // Shopizer E-commerce API Types
 // Based on Swagger spec from http://192.168.56.1:8080/v2/api-docs
 
+export interface ProductDescription {
+  id: number;
+  language: string;
+  name: string;
+  description?: string;
+  friendlyUrl?: string;
+  keyWords?: string;
+  highlights?: string;
+  metaDescription?: string;
+  title?: string;
+  priceAppender?: string;
+}
+
 export interface Product {
   id: number;
   sku: string;
   name: string;
-  description?: string;
+  description?: ProductDescription;
   price: number;
   finalPrice?: string;
   originalPrice?: string;
