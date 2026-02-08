@@ -44,3 +44,12 @@ next-env.d.ts
 .github_ssh_key
 .github_ssh_key.pub
 .ssh/
+
+# Build artifacts
+dist/
+
+# Development scripts (not needed for app to run)
+scripts/
+
+# Documentation that's not for the app
+CHECKLIST.md
